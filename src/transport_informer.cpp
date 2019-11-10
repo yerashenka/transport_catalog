@@ -93,7 +93,7 @@ vector<Json::Node> ProcessRequests(const TransportDatabase &db, const vector<Jso
   vector<Json::Node> responses;
   responses.reserve(requests.size());
   for (const auto &request_info : requests) {
-    auto process_lambda = [&db](const auto& request) {
+    auto process_lambda = [&db](const auto &request) {
       return request.Process(db);
     };
     Json::Dict dict = visit(process_lambda, Read(request_info.AsMap()));
