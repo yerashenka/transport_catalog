@@ -132,13 +132,20 @@ struct FontFamily {
 };
 }
 
+class ISvgObject {
+ public:
+  virtual ~ISvgObject() = default;
+  virtual void Render(std::ostream &out) const = 0;
+};
+
+template <typename Shape>
 class ShapeBasis {
  public:
-  void SetFillColor(const Color &color) { fill_color_ = {color}; }
-  void SetStrokeColor(const Color &color) { stroke_color_ = {color}; }
-  void SetStrokeWidth(double width) { stroke_width_ = {width}; }
-  void SetStrokeLineCap(const std::string &cap) { line_cap_ = {cap}; }
-  void SetStrokeLineJoin(const std::string &join) { line_join_ = {join}; }
+  Shape &SetFillColor(const Color &color) { fill_color_ = {color}; return static_cast<Shape&>(*this); }
+  Shape &SetStrokeColor(const Color &color) { stroke_color_ = {color}; return static_cast<Shape&>(*this); }
+  Shape &SetStrokeWidth(double width) { stroke_width_ = {width}; return static_cast<Shape&>(*this); }
+  Shape &SetStrokeLineCap(const std::string &cap) { line_cap_ = {cap}; return static_cast<Shape&>(*this); }
+  Shape &SetStrokeLineJoin(const std::string &join) { line_join_ = {join}; return static_cast<Shape&>(*this); }
   void Render(std::ostream &out) const {
     out << fill_color_ << stroke_color_ << stroke_width_ << line_cap_
         << line_join_;
@@ -152,36 +159,23 @@ class ShapeBasis {
   Properties::LineJoin line_join_;
 };
 
-class Circle {
+class Circle : public ShapeBasis<Circle>, public ISvgObject {
  public:
-  Circle &SetFillColor(const Color &color) { shape_basis_.SetFillColor(color); return *this;  }
-  Circle &SetStrokeColor(const Color &color) { shape_basis_.SetStrokeColor(color); return *this; }
-  Circle &SetStrokeWidth(double width) { shape_basis_.SetStrokeWidth(width); return *this; }
-  Circle &SetStrokeLineCap(const std::string &cap) { shape_basis_.SetStrokeLineCap(cap); return *this; }
-  Circle &SetStrokeLineJoin(const std::string &join) { shape_basis_.SetStrokeLineJoin(join); return *this;}
-
   Circle &SetCenter(Point center) { center_ = {center}; return *this; }
   Circle &SetRadius(double radius) { radius_ = {radius}; return *this; }
   void Render(std::ostream &out) const {
     out << "<circle " << center_ << radius_;
-    shape_basis_.Render(out);
+    ShapeBasis::Render(out);
     out << "/>";
   }
 
  private:
-  ShapeBasis shape_basis_{};
   Properties::Center center_{0, 0};
   Properties::Radius radius_{1.0};
 };
 
-class Polyline {
+class Polyline : public ShapeBasis<Polyline>, public ISvgObject {
  public:
-  Polyline &SetFillColor(const Color &color) { shape_basis_.SetFillColor(color); return *this;  }
-  Polyline &SetStrokeColor(const Color &color) { shape_basis_.SetStrokeColor(color); return *this; }
-  Polyline &SetStrokeWidth(double width) { shape_basis_.SetStrokeWidth(width); return *this; }
-  Polyline &SetStrokeLineCap(const std::string &cap) { shape_basis_.SetStrokeLineCap(cap); return *this; }
-  Polyline &SetStrokeLineJoin(const std::string &join) { shape_basis_.SetStrokeLineJoin(join); return *this;}
-
   Polyline &AddPoint(Point point) { points_.emplace_back(point); return *this; }
   void Render(std::ostream &out) const {
     out << "<polyline points=\"";
@@ -189,23 +183,16 @@ class Polyline {
       out << point.x << ',' << point.y << ' ';
     }
     out << "\" ";
-    shape_basis_.Render(out);
+    ShapeBasis::Render(out);
     out << "/>";
   }
 
  private:
-  ShapeBasis shape_basis_{};
   std::vector<Point> points_;
 };
 
-class Text {
+class Text : public ShapeBasis<Text>, public ISvgObject {
  public:
-  Text &SetFillColor(const Color &color) { shape_basis_.SetFillColor(color); return *this;  }
-  Text &SetStrokeColor(const Color &color) { shape_basis_.SetStrokeColor(color); return *this; }
-  Text &SetStrokeWidth(double width) { shape_basis_.SetStrokeWidth(width); return *this; }
-  Text &SetStrokeLineCap(const std::string &cap) { shape_basis_.SetStrokeLineCap(cap); return *this; }
-  Text &SetStrokeLineJoin(const std::string &join) { shape_basis_.SetStrokeLineJoin(join); return *this;}
-
   Text &SetPoint(Point point) { coordinates_ = {point}; return *this; }
   Text &SetOffset(Point point) { offset_ = {point}; return *this; }
   Text &SetFontSize(uint32_t font_size) {font_size_ = {font_size}; return *this; }
@@ -214,12 +201,11 @@ class Text {
   void Render(std::ostream &out) const {
     out << "<text " << coordinates_ << offset_ << font_size_
         << font_family_;
-    shape_basis_.Render(out);
+    ShapeBasis::Render(out);
     out <<'>' << text_ << "</text>";
   }
 
  private:
-  ShapeBasis shape_basis_{};
   Properties::Coordinates coordinates_{0, 0};
   Properties::Offset offset_{0, 0};
   Properties::FontSize font_size_{1};
@@ -227,26 +213,22 @@ class Text {
   std::string text_;
 };
 
-using SvgShape = std::variant<Circle, Polyline, Text>;
-
 class Document {
  public:
-  void Add(SvgShape shape) {
-    shapes_.emplace_back(std::move(shape));
+  template <typename Type>
+  void Add(Type object) {
+    objects_.emplace_back(std::make_unique<Type>(std::move(object)));
   }
   void Render(std::ostream &out) const {
     out << R"(<?xml version="1.0" encoding="UTF-8" ?>)";
     out << R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1">)";
-    auto visitor = [&out] (const auto &shape) {
-      shape.Render(out);
-    };
-    for (const auto &shape : shapes_){
-      std::visit(visitor, shape);
+    for (const auto &object : objects_){
+      object->Render(out);
     }
     out << R"(</svg>)";
   }
 
  private:
-  std::vector<SvgShape> shapes_;
+  std::vector<std::unique_ptr<ISvgObject>> objects_;
 };
 }
