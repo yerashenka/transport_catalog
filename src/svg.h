@@ -39,6 +39,20 @@ struct Rgb {
   }
 };
 
+struct Rgba {
+  uint8_t red;
+  uint8_t green;
+  uint8_t blue;
+  double alpha;
+
+  operator Color() const {
+    return {"rgb(" + std::to_string(red)
+                + ',' + std::to_string(green)
+                + ',' + std::to_string(blue)
+                + ',' + std::to_string(alpha) + ')'};
+  }
+};
+
 namespace Properties {
 struct FillColor{
   Color color;
