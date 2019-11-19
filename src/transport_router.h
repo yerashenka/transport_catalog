@@ -18,9 +18,7 @@ private:
 public:
   TransportRouter(const TransportData::StopsDict &stops,
                   const TransportData::BusesDict &buses,
-                  const Json::Dict &routing_settings_json);
-
-
+                  const Json::Dict &settings);
 
   std::optional<Responses::Route> FindRoute(const std::string &stop_from, const std::string &stop_to) const;
 
@@ -30,7 +28,7 @@ private:
     double bus_velocity;  // km/h
   };
 
-  static RoutingSettings MakeRoutingSettings(const Json::Dict &description);
+  static RoutingSettings ParseRoutingSettings(const Json::Dict &description);
 
   void FillGraphWithStops(const TransportData::StopsDict &stops);
 

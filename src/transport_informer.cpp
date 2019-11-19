@@ -9,34 +9,34 @@ namespace Requests {
 
   Json::Dict Stop::Process(const TransportDatabase &db) const {
     const auto stop = db.GetStopInfo(name);
-    Json::Dict dict;
+    Json::Dict response;
     if (!stop) {
-      dict["error_message"] = Json::Node("not found"s);
+      response["error_message"] = Json::Node("not found"s);
     } else {
       vector<Json::Node> bus_nodes;
       bus_nodes.reserve(stop->bus_names.size());
       for (const auto& bus_name : stop->bus_names) {
         bus_nodes.emplace_back(bus_name);
       }
-      dict["buses"] = Json::Node(move(bus_nodes));
+      response["buses"] = Json::Node(move(bus_nodes));
     }
-    return dict;
+    return response;
   }
 
   Json::Dict Bus::Process(const TransportDatabase &db) const {
     const auto bus = db.GetBusInfo(name);
-    Json::Dict dict;
+    Json::Dict response;
     if (!bus) {
-      dict["error_message"] = Json::Node("not found"s);
+      response["error_message"] = Json::Node("not found"s);
     } else {
-      dict = {
+      response = {
           {"stop_count", Json::Node(static_cast<int>(bus->stop_count))},
           {"unique_stop_count", Json::Node(static_cast<int>(bus->unique_stop_count))},
           {"route_length", Json::Node(bus->road_route_length)},
           {"curvature", Json::Node(bus->road_route_length / bus->geo_route_length)},
       };
     }
-    return dict;
+    return response;
   }
 
   struct RouteItemResponseBuilder {
@@ -58,38 +58,53 @@ namespace Requests {
   };
 
   Json::Dict Route::Process(const TransportDatabase &db) const {
-    Json::Dict dict;
+    Json::Dict response;
     const auto route = db.FindRoute(stop_from, stop_to);
     if (!route) {
-      dict["error_message"] = Json::Node("not found"s);
+      response["error_message"] = Json::Node("not found"s);
     } else {
-      dict["total_time"] = Json::Node(route->total_time);
+      response["total_time"] = Json::Node(route->total_time);
       vector<Json::Node> items;
       items.reserve(route->items.size());
       for (const auto& item : route->items) {
         items.emplace_back(visit(RouteItemResponseBuilder{}, item));
       }
 
-      dict["items"] = move(items);
+      response["items"] = move(items);
     }
 
-    return dict;
+    return response;
+  }
+
+  Json::Dict Map::Process(const TransportDatabase &db) const {
+    Json::Dict response;
+    if (!map_builder.IsMapBuilt()) {
+      map_builder.BuildMap(db.GetStopsData(), db.GetBusesData());
+    }
+    response["map"] = map_builder.GetMap();
+    return response;
   }
 }
 
 namespace TransportInformer {
-variant<Stop, Bus, Route> Read(const Json::Dict &attrs) {
+using namespace Requests;
+
+Request Informer::Read(const Json::Dict &attrs) {
   const string &type = attrs.at("type").AsString();
   if (type == "Bus") {
     return Bus{attrs.at("name").AsString()};
   } else if (type == "Stop") {
     return Stop{attrs.at("name").AsString()};
-  } else {
+  } else if (type == "route") {
     return Route{attrs.at("from").AsString(), attrs.at("to").AsString()};
+  } else if (type == "map") {
+    return Map{map_builder_};
+  } else {
+    throw runtime_error("unknown request type");
   }
 }
 
-vector<Json::Node> ProcessRequests(const TransportDatabase &db, const vector<Json::Node> &requests) {
+vector<Json::Node> Informer::ProcessRequests(const TransportDatabase &db, const vector<Json::Node> &requests) {
   vector<Json::Node> responses;
   responses.reserve(requests.size());
   for (const auto &request_info : requests) {

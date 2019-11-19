@@ -2,9 +2,10 @@
 
 #include <sstream>
 
+namespace TransportDatabase {
 using namespace std;
 
-TransportDatabase::TransportDatabase(vector<TransportData::DataQuery> data, const Json::Dict &routing_settings_json) {
+Database::Database(vector<TransportData::DataQuery> data, const Json::Dict &routing_settings) {
   auto stops_end = partition(begin(data), end(data), [](const auto &item) {
     return holds_alternative<TransportData::Stop>(item);
   });
@@ -15,13 +16,13 @@ TransportDatabase::TransportDatabase(vector<TransportData::DataQuery> data, cons
     stops_data_.emplace(stop.name, move(stop));
   }
 
-  for (auto& item : Range{stops_end, end(data)}) {
-    auto& bus = get<TransportData::Bus>(item);
-    bus_responses_[bus.name] = BusResponse{
-      bus.stops.size(),
-      ComputeUniqueItemsCount(AsRange(bus.stops)),
-      ComputeRoadRouteLength(bus.stops, stops_data_),
-      ComputeGeoRouteDistance(bus.stops, stops_data_)
+  for (auto &item : Range{stops_end, end(data)}) {
+    auto &bus = get<TransportData::Bus>(item);
+    bus_responses_[bus.name] = Responses::Bus{
+        bus.stops.size(),
+        ComputeUniqueItemsCount(AsRange(bus.stops)),
+        ComputeRoadRouteLength(bus.stops, stops_data_),
+        ComputeGeoRouteDistance(bus.stops, stops_data_)
     };
 
     for (const string &stop_name : bus.stops) {
@@ -31,10 +32,10 @@ TransportDatabase::TransportDatabase(vector<TransportData::DataQuery> data, cons
     buses_data_.emplace(bus.name, move(bus));
   }
 
-  router_ = make_unique<TransportRouter>(stops_data_, buses_data_, routing_settings_json);
+  router_ = make_unique<TransportRouter>(stops_data_, buses_data_, routing_settings);
 }
 
-optional<const TransportDatabase::StopResponse> TransportDatabase::GetStopInfo(const string &name) const {
+optional<const Responses::Stop> Database::GetStopInfo(const string &name) const {
   if (stop_responses_.count(name) != 0) {
     return stop_responses_.at(name);
   } else {
@@ -42,7 +43,7 @@ optional<const TransportDatabase::StopResponse> TransportDatabase::GetStopInfo(c
   }
 }
 
-optional<const TransportDatabase::BusResponse> TransportDatabase::GetBusInfo(const string &name) const {
+optional<const Responses::Bus> Database::GetBusInfo(const string &name) const {
   if (bus_responses_.count(name) != 0) {
     return bus_responses_.at(name);
   } else {
@@ -51,13 +52,13 @@ optional<const TransportDatabase::BusResponse> TransportDatabase::GetBusInfo(con
 }
 
 optional<const Responses::Route>
-    TransportDatabase::FindRoute(const string &stop_from, const string &stop_to) const {
+Database::FindRoute(const string &stop_from, const string &stop_to) const {
   return router_->FindRoute(stop_from, stop_to);
 }
 
-int TransportDatabase::ComputeRoadRouteLength(
+int Database::ComputeRoadRouteLength(
     const vector<string> &stops,
-    const StopsDict &stops_dict
+    const TransportData::StopsDict &stops_dict
 ) {
   int result = 0;
   for (size_t i = 1; i < stops.size(); ++i) {
@@ -66,13 +67,14 @@ int TransportDatabase::ComputeRoadRouteLength(
   return result;
 }
 
-double TransportDatabase::ComputeGeoRouteDistance(
+double Database::ComputeGeoRouteDistance(
     const vector<string> &stops,
-    const StopsDict &stops_dict
+    const TransportData::StopsDict &stops_dict
 ) {
   double result = 0;
   for (size_t i = 1; i < stops.size(); ++i) {
     result += Location::Distance(stops_dict.at(stops[i - 1]).position, stops_dict.at(stops[i]).position);
   }
   return result;
+}
 }

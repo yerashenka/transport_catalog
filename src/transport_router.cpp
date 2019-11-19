@@ -5,8 +5,8 @@ using namespace std;
 
 TransportRouter::TransportRouter(const TransportData::StopsDict &stops,
                                  const TransportData::BusesDict &buses,
-                                 const Json::Dict &routing_settings_json)
-    : routing_settings_(MakeRoutingSettings(routing_settings_json))
+                                 const Json::Dict &settings)
+    : routing_settings_(ParseRoutingSettings(settings))
 {
   const size_t vertex_count = stops.size() * 2;
   vertices_info_.resize(vertex_count);
@@ -18,7 +18,7 @@ TransportRouter::TransportRouter(const TransportData::StopsDict &stops,
   router_ = std::make_unique<Router>(graph_);
 }
 
-TransportRouter::RoutingSettings TransportRouter::MakeRoutingSettings(const Json::Dict &description) {
+TransportRouter::RoutingSettings TransportRouter::ParseRoutingSettings(const Json::Dict &description) {
   return {
       description.at("bus_wait_time").AsInt(),
       description.at("bus_velocity").AsDouble(),
