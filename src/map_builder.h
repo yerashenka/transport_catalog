@@ -22,8 +22,8 @@ struct RenderSettings {
   std::vector<Svg::Color> color_palette;
 };
 
-RenderSettings ParseRenderSettings(const Json::Dict &render_settings);
 Svg::Color ParseColor(const Json::Node &color_node);
+RenderSettings ParseRenderSettings(const Json::Dict &render_settings);
 
 class MapBuilder {
  public:
