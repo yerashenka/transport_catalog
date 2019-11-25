@@ -1,5 +1,6 @@
 #pragma once
 
+#include "map_projector.h"
 #include "svg.h"
 #include "transport_data.h"
 #include <string>
@@ -24,24 +25,23 @@ struct RenderSettings {
 
 Svg::Color ParseColor(const Json::Node &color_node);
 RenderSettings ParseRenderSettings(const Json::Dict &render_settings);
+std::string EscapeSpecialCharacters(const std::string &test);
 
 class MapBuilder {
  public:
   explicit MapBuilder(const Json::Dict &render_settings)
-    : render_settings_(ParseRenderSettings(render_settings)) {}
+    : settings_(ParseRenderSettings(render_settings)) {}
   void BuildMap(const StopsDict &stops, const BusesDict &buses);
   bool IsMapBuilt() const { return !map_.empty(); }
   std::string GetMap() const { return map_; }
 
  private:
-  RenderSettings render_settings_;
-  double width_zoom_coef_{1.};
-  double height_zoom_coef_{1.};
+  RenderSettings settings_;
+  MapProjector projector_;
   std::string map_;
 
-  void RenderRoutes(Svg::Document &doc, const BusesDict &buses) const;
-  void RenderStops(Svg::Document &doc, const StopsDict &stops) const;
-  void RenderStopLabels(Svg::Document &doc, const StopsDict &stops) const;
-  double CalculateZoomCoefficient(double param) const;
+  void BuildRoutes(Svg::Document &doc, const BusesDict &buses, const StopsDict &stops);
+  void BuildStops(Svg::Document &doc, const StopsDict &stops);
+  void BuildStopLabels(Svg::Document &doc, const StopsDict &stops);
 };
 }

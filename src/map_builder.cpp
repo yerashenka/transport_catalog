@@ -1,4 +1,6 @@
 #include "map_builder.h"
+#include <set>
+#include <sstream>
 
 using namespace std;
 
@@ -46,5 +48,35 @@ RenderSettings ParseRenderSettings(const Json::Dict &render_settings) {
   return result;
 }
 
+void MapBuilder::BuildMap(const StopsDict &stops, const BusesDict &buses) {
+  projector_.Initialize(stops, settings_.width, settings_.height, settings_.padding);
+  Svg::Document doc;
+  BuildRoutes(doc, buses, stops);
+  BuildStops(doc, stops);
+  BuildStopLabels(doc, stops);
+  stringstream stream;
+  doc.Render(stream);
+  map_ = EscapeSpecialCharacters(stream.str());
+}
+void MapBuilder::BuildRoutes(Svg::Document &doc,
+                             const Visualisation::BusesDict &buses,
+                             const StopsDict &stops) {
+  set<string> route_names;
+  for (const auto &[route_name, _] : buses) {
+    route_names.insert(route_name);   // sorting
+  }
+  size_t color_id = 0;
+  for (const string &route_name : route_names) {
+    Svg::Polyline polyline;
+    polyline.SetStrokeColor(settings_.color_palette[color_id % settings_.color_palette.size()]);
+    color_id++;
+    polyline.SetStrokeWidth(settings_.line_width);
+    polyline.SetStrokeLineCap("round").SetStrokeLineJoin("round");
+    for (const string &stop_name : buses.at(route_name).stops) {
+      polyline.AddPoint(projector_.ProjectPoint(stops.at(stop_name).position));
+    }
+    doc.Add(move(polyline));
+  }
+}
 
 }
