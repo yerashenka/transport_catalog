@@ -30,22 +30,29 @@ Svg::Color ParseColor(const Json::Node &color_node) {
 
 RenderSettings ParseRenderSettings(const Json::Dict &render_settings) {
   RenderSettings result{};
+  if (render_settings.empty())
+    return result;
   result.width = render_settings.at("width").AsDouble();
   result.height = render_settings.at("height").AsDouble();
   result.padding = render_settings.at("padding").AsDouble();
   result.stop_radius = render_settings.at("stop_radius").AsDouble();
   result.line_width = render_settings.at("line_width").AsDouble();
-  result.stop_label_font_size = render_settings.at("stop_label_font_size").AsInt();
-  const Json::Array &stop_label_offset = render_settings.at("stop_label_offset").AsArray();
-  result.stop_label_offset = Svg::Point{stop_label_offset[0].AsDouble(),
-                                        stop_label_offset[1].AsDouble()};
-  result.underlayer_color = ParseColor(render_settings.at("underlayer_color"));
-  result.undrlayer_width = render_settings.at("underlayer_width").AsDouble();
   const vector<Json::Node> &color_palette = render_settings.at("color_palette").AsArray();
   result.color_palette.reserve(color_palette.size());
   for (const Json::Node &color_node : color_palette) {
     result.color_palette.emplace_back(ParseColor(color_node));
   }
+
+  result.stop_label_font_size = render_settings.at("stop_label_font_size").AsInt();
+  const Json::Array &stop_label_offset = render_settings.at("stop_label_offset").AsArray();
+  result.stop_label_offset = Svg::Point{stop_label_offset[0].AsDouble(),
+                                        stop_label_offset[1].AsDouble()};
+  result.bus_label_font_size = render_settings.at("bus_label_font_size").AsInt();
+  const Json::Array &bus_label_offset = render_settings.at("stop_label_offset").AsArray();
+  result.bus_label_offset = Svg::Point{bus_label_offset[0].AsDouble(),
+                                        bus_label_offset[1].AsDouble()};
+  result.underlayer_color = ParseColor(render_settings.at("underlayer_color"));
+  result.undrlayer_width = render_settings.at("underlayer_width").AsDouble();
   return result;
 }
 
@@ -60,24 +67,25 @@ string EscapeSpecialCharacters(string input) {
   return output;
 }
 
-void MapBuilder::BuildMap(const StopsDict &stops, const BusesDict &buses) {
-  projector_.Initialize(stops, settings_.width, settings_.height, settings_.padding);
+MapBuilder::MapBuilder(const TransportDatabase::Database &db, const Json::Dict &render_settings)
+  : settings_(ParseRenderSettings(render_settings)),
+    projector_(db.GetStopsData(), settings_.width, settings_.height, settings_.padding) {
+  set<string> sorted_route_names = SortNames(db.GetRoutesData());
+  set<string> sorted_stop_names = SortNames(db.GetStopsData());
+
   Svg::Document doc{};
-  BuildRoutes(doc, buses, stops);
-  BuildStops(doc, stops);
-  BuildStopLabels(doc, stops);
+  DrawRoutes(doc, db, sorted_route_names);
+  DrawStops(doc, db, sorted_stop_names);
+  DrawStopLabels(doc, db, sorted_stop_names);
   ostringstream stream;
   doc.Render(stream);
   map_ = EscapeSpecialCharacters(stream.str());
 }
 
-void MapBuilder::BuildRoutes(Svg::Document &doc,
-                             const Visualisation::BusesDict &buses,
-                             const StopsDict &stops) {
-  set<string> route_names;
-  for (const auto &[route_name, _] : buses) {
-    route_names.insert(route_name);   // sorting
-  }
+void MapBuilder::DrawRoutes(Svg::Document &doc, const TransportDatabase::Database &db,
+                            const set<string> &route_names) {
+  const TransportData::StopsDict &stops = db.GetStopsData();
+  const TransportData::BusesDict &routes = db.GetRoutesData();
   size_t color_id = 0;
   for (const string &route_name : route_names) {
     Svg::Polyline polyline;
@@ -85,18 +93,16 @@ void MapBuilder::BuildRoutes(Svg::Document &doc,
     color_id++;
     polyline.SetStrokeWidth(settings_.line_width);
     polyline.SetStrokeLineCap("round").SetStrokeLineJoin("round");
-    for (const string &stop_name : buses.at(route_name).stops) {
+    for (const string &stop_name : routes.at(route_name).stops) {
       polyline.AddPoint(projector_.ProjectPoint(stops.at(stop_name).position));
     }
     doc.Add(move(polyline));
   }
 }
 
-void MapBuilder::BuildStops(Svg::Document &doc, const StopsDict &stops) {
-  set<string> stop_names;
-  for (const auto &[stop_name, _] : stops) {
-    stop_names.insert(stop_name);
-  }
+void MapBuilder::DrawStops(Svg::Document &doc, const TransportDatabase::Database &db,
+                           const set<string> &stop_names) {
+  const TransportData::StopsDict &stops = db.GetStopsData();
   for (const string &stop_name : stop_names) {
     Svg::Circle stop_circle;
     stop_circle.SetCenter(projector_.ProjectPoint(stops.at(stop_name).position));
@@ -106,11 +112,9 @@ void MapBuilder::BuildStops(Svg::Document &doc, const StopsDict &stops) {
   }
 }
 
-void MapBuilder::BuildStopLabels(Svg::Document &doc, const StopsDict &stops) {
-  set<string> stop_names;
-  for (const auto &[stop_name, _] : stops) {
-    stop_names.insert(stop_name);
-  }
+void MapBuilder::DrawStopLabels(Svg::Document &doc, const TransportDatabase::Database &db,
+                                const set<string> &stop_names) {
+  const TransportData::StopsDict &stops = db.GetStopsData();
   for (const string &stop_name : stop_names) {
     Svg::Text substrate;
     substrate.SetPoint(projector_.ProjectPoint(stops.at(stop_name).position));

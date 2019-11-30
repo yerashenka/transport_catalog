@@ -20,25 +20,3 @@ void CheckResponses(const vector<Json::Node> &lhs, const vector<Json::Node> &rhs
     REQUIRE(lhs_response == *rhs_response_it);
   }
 }
-
-void CheckStreams(istream &lhs, istream &rhs) {
-  string lhs_str, rhs_str;
-  while (lhs.good() || rhs.good()) {
-    REQUIRE(lhs.good() && rhs.good());
-    lhs >> lhs_str;
-    rhs >> rhs_str;
-    REQUIRE(lhs_str == rhs_str);
-  }
-}
-
-std::vector<Json::Node> ProcessExample(const Json::Document &doc) {
-  const map<string, Json::Node> input = doc.GetRoot().AsMap();
-  const vector<Json::Node> &database_input = input.at("base_requests").AsArray();
-  const map<string, Json::Node> &settings = input.at("routing_settings").AsMap();
-  TransportDatabase::Database db(TransportData::ReadData(database_input), settings);
-
-  const Json::Dict &render_settings = input.at("render_settings").AsMap();
-  const vector<Json::Node> &info_requests = input.at("stat_requests").AsArray();
-  TransportInformer::Informer informer(Visualisation::MapBuilder{render_settings});
-  return informer.ProcessRequests(db, info_requests);
-}

@@ -24,7 +24,7 @@ namespace Requests {
   }
 
   Json::Dict Bus::Process(const TransportDatabase &db) const {
-    const auto bus = db.GetBusInfo(name);
+    const auto bus = db.GetRouteInfo(name);
     Json::Dict response;
     if (!bus) {
       response["error_message"] = Json::Node("not found"s);
@@ -78,10 +78,7 @@ namespace Requests {
 
   Json::Dict Map::Process(const TransportDatabase &db) const {
     Json::Dict response;
-    if (!map_builder.IsMapBuilt()) {
-      map_builder.BuildMap(db.GetStopsData(), db.GetBusesData());
-    }
-    response["map"] = map_builder.GetMap();
+    response["map"] = map_builder->GetMap();
     return response;
   }
 }

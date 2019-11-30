@@ -3,8 +3,11 @@
 #include "map_projector.h"
 #include "svg.h"
 #include "transport_data.h"
+#include "transport_database.h"
+#include <map>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace Visualisation {
 using StopsDict = TransportData::StopsDict;
@@ -14,14 +17,27 @@ struct RenderSettings {
   double width;
   double height;
   double padding;
+
   double stop_radius;
   double line_width;
+  std::vector<Svg::Color> color_palette;
+
   int stop_label_font_size;
   Svg::Point stop_label_offset;
+  int bus_label_font_size;
+  Svg::Point bus_label_offset;
   Svg::Color underlayer_color;
   double undrlayer_width;
-  std::vector<Svg::Color> color_palette;
 };
+
+template <typename T>
+std::set<std::string> SortNames(const std::unordered_map<std::string, T> &map) {
+  std::set<std::string> sorted_names;
+  for (const auto &[name, _] : map) {
+    sorted_names.insert(name);
+  }
+  return sorted_names;
+}
 
 Svg::Color ParseColor(const Json::Node &color_node);
 RenderSettings ParseRenderSettings(const Json::Dict &render_settings);
@@ -29,19 +45,22 @@ std::string EscapeSpecialCharacters(std::string &input);
 
 class MapBuilder {
  public:
-  explicit MapBuilder(const Json::Dict &render_settings)
-    : settings_(ParseRenderSettings(render_settings)) {}
-  void BuildMap(const StopsDict &stops, const BusesDict &buses);
-  [[nodiscard]] bool IsMapBuilt() const { return !map_.empty(); }
+  explicit MapBuilder(const TransportDatabase::Database &db, const Json::Dict &render_settings);
   [[nodiscard]] std::string GetMap() const { return map_; }
 
  private:
   RenderSettings settings_;
-  MapProjector projector_{};
+  MapProjector projector_;
   std::string map_{};
 
-  void BuildRoutes(Svg::Document &doc, const BusesDict &buses, const StopsDict &stops);
-  void BuildStops(Svg::Document &doc, const StopsDict &stops);
-  void BuildStopLabels(Svg::Document &doc, const StopsDict &stops);
+
+  void DrawRoutes(Svg::Document &doc, const TransportDatabase::Database &db,
+                  const std::set<std::string> &route_names);
+  void DrawStops(Svg::Document &doc, const TransportDatabase::Database &db,
+                 const std::set<std::string> &stop_names);
+  void DrawStopLabels(Svg::Document &doc, const TransportDatabase::Database &db,
+                      const std::set<std::string> &stop_names);
+//  void DrawBusLabels(Svg::Document &doc, const TransportDatabase::Database &db,
+//                     const std::set<std::string> &route_names);
 };
 }

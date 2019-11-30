@@ -18,7 +18,7 @@ int main() {
   Database db(TransportData::ReadData(database_input), routing_settings);
 
   const Json::Dict &render_settings = input.at("render_settings").AsMap();
-  Informer informer(Visualisation::MapBuilder{render_settings});
+  Informer informer(make_shared<Visualisation::MapBuilder>(db, render_settings));
   const Json::Array &info_requests = input.at("stat_requests").AsArray();
   cout << informer.ProcessRequests(db, info_requests) << endl;
 

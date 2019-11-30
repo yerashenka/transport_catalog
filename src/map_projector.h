@@ -8,8 +8,9 @@
 namespace Visualisation {
 class MapProjector {
  public:
-  void Initialize(const TransportData::StopsDict &stops, double map_width,
-                  double map_height, double map_padding);
+  MapProjector(const TransportData::StopsDict &stops, double map_width,
+               double map_height, double map_padding);
+
   [[nodiscard]]
   Svg::Point ProjectPoint(const Location::Point &p) const;
 

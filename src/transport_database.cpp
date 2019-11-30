@@ -43,7 +43,7 @@ optional<const Responses::Stop> Database::GetStopInfo(const string &name) const 
   }
 }
 
-optional<const Responses::Bus> Database::GetBusInfo(const string &name) const {
+optional<const Responses::Bus> Database::GetRouteInfo(const string &name) const {
   if (bus_responses_.count(name) != 0) {
     return bus_responses_.at(name);
   } else {

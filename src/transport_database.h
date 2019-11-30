@@ -2,7 +2,6 @@
 
 #include "utils.h"
 #include "json.h"
-#include "map_builder.h"
 #include "transport_data.h"
 #include "transport_router.h"
 #include "responses.h"
@@ -20,10 +19,10 @@ class Database {
   Database(std::vector<TransportData::DataQuery> data, const Json::Dict &routing_settings);
 
   const TransportData::StopsDict &GetStopsData() const { return stops_data_; }
-  const TransportData::BusesDict &GetBusesData() const { return buses_data_; }
+  const TransportData::BusesDict &GetRoutesData() const { return buses_data_; }
 
   std::optional<const Responses::Stop> GetStopInfo(const std::string &name) const;
-  std::optional<const Responses::Bus> GetBusInfo(const std::string &name) const;
+  std::optional<const Responses::Bus> GetRouteInfo(const std::string &name) const;
 
   std::optional<const Responses::Route> FindRoute(const std::string &stop_from, const std::string &stop_to) const;
 
