@@ -33,9 +33,9 @@ struct Rgb {
   uint8_t blue;
 
   operator Color() const {
-    return {"rgb(" + std::to_string(red)
+    return Color("rgb(" + std::to_string(red)
              + ',' + std::to_string(green)
-             + ',' + std::to_string(blue) + ')'};
+             + ',' + std::to_string(blue) + ')');
   }
 };
 
@@ -46,10 +46,10 @@ struct Rgba {
   double alpha;
 
   operator Color() const {
-    return {"rgba(" + std::to_string(red)
+    return Color("rgba(" + std::to_string(red)
                 + ',' + std::to_string(green)
                 + ',' + std::to_string(blue)
-                + ',' + std::to_string(alpha) + ')'};
+                + ',' + std::to_string(alpha) + ')');
   }
 };
 
@@ -144,6 +144,15 @@ struct FontFamily {
     return out;
   }
 };
+
+struct FontWeight {
+  std::string weight;
+  friend std::ostream &operator<<(std::ostream &out, const FontWeight &font_weight) {
+    if (!font_weight.weight.empty())
+      out << "font-weight=\"" << font_weight.weight << "\" ";
+    return out;
+  }
+};
 }
 
 class ISvgObject {
@@ -177,7 +186,7 @@ class Circle : public ShapeBasis<Circle>, public ISvgObject {
  public:
   Circle &SetCenter(Point center) { center_ = {center}; return *this; }
   Circle &SetRadius(double radius) { radius_ = {radius}; return *this; }
-  void Render(std::ostream &out) const {
+  void Render(std::ostream &out) const override {
     out << "<circle " << center_ << radius_;
     ShapeBasis::Render(out);
     out << "/>";
@@ -191,7 +200,7 @@ class Circle : public ShapeBasis<Circle>, public ISvgObject {
 class Polyline : public ShapeBasis<Polyline>, public ISvgObject {
  public:
   Polyline &AddPoint(Point point) { points_.emplace_back(point); return *this; }
-  void Render(std::ostream &out) const {
+  void Render(std::ostream &out) const override {
     out << "<polyline points=\"";
     for (const Point &point : points_) {
       out << point.x << ',' << point.y << ' ';
@@ -211,10 +220,11 @@ class Text : public ShapeBasis<Text>, public ISvgObject {
   Text &SetOffset(Point point) { offset_ = {point}; return *this; }
   Text &SetFontSize(uint32_t font_size) {font_size_ = {font_size}; return *this; }
   Text &SetFontFamily(const std::string &font_family) { font_family_ = {font_family}; return *this; }
+  Text &SetFontWeight(const std::string &font_weight) { font_weight_ = {font_weight}; return *this; }
   Text &SetData(const std::string &data) { text_ = data; return *this; }
-  void Render(std::ostream &out) const {
+  void Render(std::ostream &out) const override {
     out << "<text " << coordinates_ << offset_ << font_size_
-        << font_family_;
+        << font_family_ << font_weight_;
     ShapeBasis::Render(out);
     out <<'>' << text_ << "</text>";
   }
@@ -224,6 +234,7 @@ class Text : public ShapeBasis<Text>, public ISvgObject {
   Properties::Offset offset_{0, 0};
   Properties::FontSize font_size_{1};
   Properties::FontFamily font_family_;
+  Properties::FontWeight font_weight_;
   std::string text_;
 };
 

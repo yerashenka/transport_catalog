@@ -48,7 +48,7 @@ RenderSettings ParseRenderSettings(const Json::Dict &render_settings) {
   result.stop_label_offset = Svg::Point{stop_label_offset[0].AsDouble(),
                                         stop_label_offset[1].AsDouble()};
   result.bus_label_font_size = render_settings.at("bus_label_font_size").AsInt();
-  const Json::Array &bus_label_offset = render_settings.at("stop_label_offset").AsArray();
+  const Json::Array &bus_label_offset = render_settings.at("bus_label_offset").AsArray();
   result.bus_label_offset = Svg::Point{bus_label_offset[0].AsDouble(),
                                         bus_label_offset[1].AsDouble()};
   result.underlayer_color = ParseColor(render_settings.at("underlayer_color"));
@@ -56,7 +56,7 @@ RenderSettings ParseRenderSettings(const Json::Dict &render_settings) {
   return result;
 }
 
-string EscapeSpecialCharacters(string input) {
+string EscapeSpecialCharacters(const string &input) {
   string output;
   for (const char c : input) {
     if (c == '"' || c == '\\') {
@@ -70,13 +70,14 @@ string EscapeSpecialCharacters(string input) {
 MapBuilder::MapBuilder(const TransportDatabase::Database &db, const Json::Dict &render_settings)
   : settings_(ParseRenderSettings(render_settings)),
     projector_(db.GetStopsData(), settings_.width, settings_.height, settings_.padding) {
-  set<string> sorted_route_names = SortNames(db.GetRoutesData());
-  set<string> sorted_stop_names = SortNames(db.GetStopsData());
+  set<string> route_names_sorted = SortNames(db.GetRoutesData());
+  set<string> stop_names_sorted = SortNames(db.GetStopsData());
 
   Svg::Document doc{};
-  DrawRoutes(doc, db, sorted_route_names);
-  DrawStops(doc, db, sorted_stop_names);
-  DrawStopLabels(doc, db, sorted_stop_names);
+  DrawRoutes(doc, db, route_names_sorted);
+  DrawRouteLabels(doc, db, route_names_sorted);
+  DrawStops(doc, db, stop_names_sorted);
+  DrawStopLabels(doc, db, stop_names_sorted);
   ostringstream stream;
   doc.Render(stream);
   map_ = EscapeSpecialCharacters(stream.str());
@@ -84,17 +85,14 @@ MapBuilder::MapBuilder(const TransportDatabase::Database &db, const Json::Dict &
 
 void MapBuilder::DrawRoutes(Svg::Document &doc, const TransportDatabase::Database &db,
                             const set<string> &route_names) {
-  const TransportData::StopsDict &stops = db.GetStopsData();
-  const TransportData::BusesDict &routes = db.GetRoutesData();
   size_t color_id = 0;
   for (const string &route_name : route_names) {
     Svg::Polyline polyline;
-    polyline.SetStrokeColor(settings_.color_palette[color_id % settings_.color_palette.size()]);
-    color_id++;
+    polyline.SetStrokeColor(settings_.color_palette[color_id++ % settings_.color_palette.size()]);
     polyline.SetStrokeWidth(settings_.line_width);
     polyline.SetStrokeLineCap("round").SetStrokeLineJoin("round");
-    for (const string &stop_name : routes.at(route_name).stops) {
-      polyline.AddPoint(projector_.ProjectPoint(stops.at(stop_name).position));
+    for (const string &stop_name : db.GetRoutesData().at(route_name).stops) {
+      polyline.AddPoint(projector_.ProjectPoint(db.GetStopsData().at(stop_name).position));
     }
     doc.Add(move(polyline));
   }
@@ -102,10 +100,9 @@ void MapBuilder::DrawRoutes(Svg::Document &doc, const TransportDatabase::Databas
 
 void MapBuilder::DrawStops(Svg::Document &doc, const TransportDatabase::Database &db,
                            const set<string> &stop_names) {
-  const TransportData::StopsDict &stops = db.GetStopsData();
   for (const string &stop_name : stop_names) {
     Svg::Circle stop_circle;
-    stop_circle.SetCenter(projector_.ProjectPoint(stops.at(stop_name).position));
+    stop_circle.SetCenter(projector_.ProjectPoint(db.GetStopsData().at(stop_name).position));
     stop_circle.SetRadius(settings_.stop_radius);
     stop_circle.SetFillColor("white");
     doc.Add(move(stop_circle));
@@ -114,10 +111,9 @@ void MapBuilder::DrawStops(Svg::Document &doc, const TransportDatabase::Database
 
 void MapBuilder::DrawStopLabels(Svg::Document &doc, const TransportDatabase::Database &db,
                                 const set<string> &stop_names) {
-  const TransportData::StopsDict &stops = db.GetStopsData();
   for (const string &stop_name : stop_names) {
     Svg::Text substrate;
-    substrate.SetPoint(projector_.ProjectPoint(stops.at(stop_name).position));
+    substrate.SetPoint(projector_.ProjectPoint(db.GetStopsData().at(stop_name).position));
     substrate.SetOffset(settings_.stop_label_offset);
     substrate.SetFontSize(settings_.stop_label_font_size);
     substrate.SetFontFamily("Verdana");
@@ -130,10 +126,46 @@ void MapBuilder::DrawStopLabels(Svg::Document &doc, const TransportDatabase::Dat
     substrate.SetStrokeLineCap("round");
     substrate.SetStrokeLineJoin("round");
     text.SetFillColor("black");
-
     doc.Add(move(substrate));
     doc.Add(move(text));
   }
 }
 
+void MapBuilder::DrawRouteLabels(Svg::Document &doc, const TransportDatabase::Database &db,
+                                 const std::set<std::string> &route_names) {
+  size_t color_id = 0;
+  for (const string &route_name : route_names) {
+    const TransportData::Bus &route = db.GetRoutesData().at(route_name);
+
+    Svg::Text first_stop_substrate;
+    const string &first_stop_name = route.stops.front();
+    first_stop_substrate.SetPoint(projector_.ProjectPoint(db.GetStopsData().at(first_stop_name).position));
+    first_stop_substrate.SetOffset(settings_.bus_label_offset);
+    first_stop_substrate.SetFontSize(settings_.bus_label_font_size);
+    first_stop_substrate.SetFontFamily("Verdana");
+    first_stop_substrate.SetFontWeight("bold");
+    first_stop_substrate.SetData(route_name);
+    Svg::Text first_stop_text = first_stop_substrate;
+
+    first_stop_substrate.SetFillColor(settings_.underlayer_color);
+    first_stop_substrate.SetStrokeColor(settings_.underlayer_color);
+    first_stop_substrate.SetStrokeWidth(settings_.undrlayer_width);
+    first_stop_substrate.SetStrokeLineCap("round");
+    first_stop_substrate.SetStrokeLineJoin("round");
+    first_stop_text.SetFillColor(settings_.color_palette[color_id++ % settings_.color_palette.size()]);
+    doc.Add(first_stop_substrate);
+    doc.Add(first_stop_text);
+
+    const string &last_stop_name = route.stops[route.stops.size() / 2];
+    if (route.is_roundtrip || last_stop_name == first_stop_name)
+      continue;
+
+    Svg::Text last_stop_substrate = first_stop_substrate;
+    last_stop_substrate.SetPoint(projector_.ProjectPoint(db.GetStopsData().at(last_stop_name).position));
+    Svg::Text last_stop_text = first_stop_text;
+    last_stop_text.SetPoint(projector_.ProjectPoint(db.GetStopsData().at(last_stop_name).position));
+    doc.Add(move(last_stop_substrate));
+    doc.Add(move(last_stop_text));
+  }
+}
 }

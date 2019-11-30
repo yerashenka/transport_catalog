@@ -23,6 +23,7 @@ namespace TransportData {
 
   struct Bus {
     std::string name;
+    bool is_roundtrip;
     std::vector<std::string> stops;
 
     static Bus ParseBus(const Json::Dict &info);

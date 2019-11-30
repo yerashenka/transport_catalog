@@ -47,6 +47,7 @@ namespace TransportData {
   Bus Bus::ParseBus(const Json::Dict &info) {
     return Bus{
         .name = info.at("name").AsString(),
+        .is_roundtrip = info.at("is_roundtrip").AsBool(),
         .stops = ParseStops(info.at("stops").AsArray(), info.at("is_roundtrip").AsBool())
     };
   }

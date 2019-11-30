@@ -41,7 +41,7 @@ std::set<std::string> SortNames(const std::unordered_map<std::string, T> &map) {
 
 Svg::Color ParseColor(const Json::Node &color_node);
 RenderSettings ParseRenderSettings(const Json::Dict &render_settings);
-std::string EscapeSpecialCharacters(std::string &input);
+std::string EscapeSpecialCharacters(const std::string &input);
 
 class MapBuilder {
  public:
@@ -53,14 +53,13 @@ class MapBuilder {
   MapProjector projector_;
   std::string map_{};
 
-
   void DrawRoutes(Svg::Document &doc, const TransportDatabase::Database &db,
                   const std::set<std::string> &route_names);
+  void DrawRouteLabels(Svg::Document &doc, const TransportDatabase::Database &db,
+                       const std::set<std::string> &route_names);
   void DrawStops(Svg::Document &doc, const TransportDatabase::Database &db,
                  const std::set<std::string> &stop_names);
   void DrawStopLabels(Svg::Document &doc, const TransportDatabase::Database &db,
                       const std::set<std::string> &stop_names);
-//  void DrawBusLabels(Svg::Document &doc, const TransportDatabase::Database &db,
-//                     const std::set<std::string> &route_names);
 };
 }
