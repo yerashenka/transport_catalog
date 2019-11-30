@@ -1,5 +1,6 @@
 #include "catch.hpp"
 #include "svg.h"
+#include "test_utils.h"
 #include <fstream>
 #include <string>
 #include <sstream>
@@ -49,7 +50,7 @@ TEST_CASE("SVG Library Test") {
 
   stringstream output_stream;
   svg.Render(output_stream);
-  ifstream correct_file("svg_examples/example_1.svg");
+  ifstream correct_file("visualization_examples/lib_example.svg");
   string output{output_stream.str()};
   stringstream correct_stream;
   correct_stream << correct_file.rdbuf();

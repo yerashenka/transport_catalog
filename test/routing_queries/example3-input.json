@@ -3,6 +3,32 @@
     "bus_wait_time": 2,
     "bus_velocity": 30
   },
+  "render_settings": {
+    "underlayer_width": 3,
+    "height": 950,
+    "stop_radius": 3,
+    "underlayer_color": [
+      255,
+      255,
+      255,
+      0.85
+    ],
+    "width": 1500,
+    "stop_label_font_size": 13,
+    "padding": 50,
+    "color_palette": [
+      "red",
+      "green",
+      "blue",
+      "brown",
+      "orange"
+    ],
+    "stop_label_offset": [
+      7,
+      -3
+    ],
+    "line_width": 10
+  },
   "base_requests": [
     {
       "type": "Bus",
