@@ -46,7 +46,7 @@ struct Rgba {
   double alpha;
 
   operator Color() const {
-    return {"rgb(" + std::to_string(red)
+    return {"rgba(" + std::to_string(red)
                 + ',' + std::to_string(green)
                 + ',' + std::to_string(blue)
                 + ',' + std::to_string(alpha) + ')'};

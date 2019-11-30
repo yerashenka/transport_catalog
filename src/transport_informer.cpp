@@ -95,9 +95,9 @@ Request Informer::Read(const Json::Dict &attrs) {
     return Bus{attrs.at("name").AsString()};
   } else if (type == "Stop") {
     return Stop{attrs.at("name").AsString()};
-  } else if (type == "route") {
+  } else if (type == "Route") {
     return Route{attrs.at("from").AsString(), attrs.at("to").AsString()};
-  } else if (type == "map") {
+  } else if (type == "Map") {
     return Map{map_builder_};
   } else {
     throw runtime_error("unknown request type");
@@ -107,10 +107,10 @@ Request Informer::Read(const Json::Dict &attrs) {
 vector<Json::Node> Informer::ProcessRequests(const TransportDatabase &db, const vector<Json::Node> &requests) {
   vector<Json::Node> responses;
   responses.reserve(requests.size());
+  auto process_lambda = [&db](const auto &request) {
+    return request.Process(db);
+  };
   for (const auto &request_info : requests) {
-    auto process_lambda = [&db](const auto &request) {
-      return request.Process(db);
-    };
     Json::Dict dict = visit(process_lambda, Read(request_info.AsMap()));
     dict["request_id"] = Json::Node(request_info.AsMap().at("id").AsInt());
     responses.emplace_back(dict);

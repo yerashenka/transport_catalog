@@ -12,35 +12,37 @@ namespace Json {
 
   class Node;
   using Dict = std::map<std::string, Node>;
+  using Array = std::vector<Node>;
 
   class Node : std::variant<std::vector<Node>, Dict, bool, int, double, std::string> {
   public:
     using variant::variant;
-    const variant &GetBase() const { return *this; }
+    [[nodiscard]] const variant &GetBase() const { return *this; }
 
-    bool IsArray() const { return std::holds_alternative<std::vector<Node>>(*this); }
-    bool IsMap() const { return std::holds_alternative<std::map<std::string, Node>>(*this); }
-    bool IsInt() const { return std::holds_alternative<int>(*this);}
-    bool IsDouble() const { return std::holds_alternative<double>(*this);}
-    bool IsNum() const { return IsDouble() || IsInt(); }
-    bool IsBool() const { return std::holds_alternative<bool>(*this); }
-    bool IsString() const { return std::holds_alternative<std::string>(*this); }
+    [[nodiscard]] bool IsArray() const { return std::holds_alternative<std::vector<Node>>(*this); }
+    [[nodiscard]] bool IsMap() const { return std::holds_alternative<std::map<std::string, Node>>(*this); }
+    [[nodiscard]] bool IsInt() const { return std::holds_alternative<int>(*this);}
+    [[nodiscard]] bool IsDouble() const { return std::holds_alternative<double>(*this);}
+    [[nodiscard]] bool IsNum() const { return IsDouble() || IsInt(); }
+    [[nodiscard]] bool IsBool() const { return std::holds_alternative<bool>(*this); }
+    [[nodiscard]] bool IsString() const { return std::holds_alternative<std::string>(*this); }
 
-    const auto& AsArray() const { return std::get<std::vector<Node>>(*this); }
-    const auto& AsMap() const { return std::get<Dict>(*this); }
-    bool AsBool() const { return std::get<bool>(*this); }
-    int AsInt() const { return std::get<int>(*this); }
-    double AsDouble() const {
+    [[nodiscard]] const auto& AsArray() const { return std::get<std::vector<Node>>(*this); }
+    [[nodiscard]] const auto& AsMap() const { return std::get<Dict>(*this); }
+    [[nodiscard]] bool AsBool() const { return std::get<bool>(*this); }
+    [[nodiscard]] int AsInt() const { return std::get<int>(*this); }
+    [[nodiscard]] double AsDouble() const {
         return std::holds_alternative<double>(*this) ? std::get<double>(*this) : std::get<int>(*this);
     }
-    const auto& AsString() const { return std::get<std::string>(*this); }
+
+    [[nodiscard]] const auto& AsString() const { return std::get<std::string>(*this); }
   };
 
   class Document {
   public:
     explicit Document(Node root) : root(move(root)) {}
 
-    const Node &GetRoot() const {
+    [[nodiscard]] const Node &GetRoot() const {
       return root;
     }
 
