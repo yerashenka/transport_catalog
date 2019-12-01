@@ -2,7 +2,7 @@
 
 #include "json.h"
 #include "transport_database.h"
-#include "map_builder.h"
+#include "transport_map.h"
 
 #include <string>
 #include <utility>
@@ -32,7 +32,7 @@ struct Route {
 };
 
 struct Map {
-  std::shared_ptr<Visualisation::MapBuilder> map_builder;
+  std::shared_ptr<Visualisation::TransportMap> map_builder;
   [[nodiscard]] Json::Dict Process(const TransportDatabase &db) const;
 };
 
@@ -45,13 +45,13 @@ using TransportDatabase = TransportDatabase::Database;
 class Informer {
  public:
   Informer() = default;
-  explicit Informer(std::shared_ptr<Visualisation::MapBuilder> map_builder)
+  explicit Informer(std::shared_ptr<Visualisation::TransportMap> map_builder)
     : map_builder_(std::move(map_builder)) {}
   Requests::Request Read(const Json::Dict &attrs);
   std::vector<Json::Node> ProcessRequests(const TransportDatabase &db, const std::vector<Json::Node> &requests);
 
  private:
-  std::shared_ptr<Visualisation::MapBuilder> map_builder_;
+  std::shared_ptr<Visualisation::TransportMap> map_builder_;
 };
 
 }

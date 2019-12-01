@@ -1,4 +1,4 @@
-#include "map_builder.h"
+#include "transport_map.h"
 #include "cctype"
 #include <set>
 #include <sstream>
@@ -72,22 +72,22 @@ string EscapeSpecialCharacters(const string &input) {
   return output;
 }
 
-MapBuilder::MapBuilder(const TransportDatabase::Database &db, const Json::Dict &render_settings)
+TransportMap::TransportMap(const TransportDatabase::Database &db, const Json::Dict &render_settings)
   : settings_(ParseRenderSettings(render_settings)),
     projector_(db.GetStopsData(), settings_.width, settings_.height, settings_.padding),
-    db_(db), route_names_(SortNames(db.GetRoutesData())), stop_names_(SortNames(db.GetStopsData())) {
+    db_(db), bus_names_(SortNames(db.GetBusesData())), stop_names_(SortNames(db.GetStopsData())) {
   DrawLayers();
   ostringstream stream;
   doc_.Render(stream);
   map_ = EscapeSpecialCharacters(stream.str());
 }
 
-void MapBuilder::DrawLayers() {
+void TransportMap::DrawLayers() {
   for (const string &layer : settings_.layers) {
     if (layer == "bus_lines") {
-      DrawRoutes();
+      DrawBuses();
     } else if (layer == "bus_labels") {
-      DrawRouteLabels();
+      DrawBusLabels();
     } else if (layer == "stop_points") {
       DrawStops();
     } else if (layer == "stop_labels") {
@@ -98,21 +98,21 @@ void MapBuilder::DrawLayers() {
   }
 }
 
-void MapBuilder::DrawRoutes() {
+void TransportMap::DrawBuses() {
   size_t color_id = 0;
-  for (const string &route_name : route_names_) {
+  for (const string &route_name : bus_names_) {
     Svg::Polyline polyline;
     polyline.SetStrokeColor(settings_.color_palette[color_id++ % settings_.color_palette.size()]);
     polyline.SetStrokeWidth(settings_.line_width);
     polyline.SetStrokeLineCap("round").SetStrokeLineJoin("round");
-    for (const string &stop_name : db_.GetRoutesData().at(route_name).stops) {
+    for (const string &stop_name : db_.GetBusesData().at(route_name).stops) {
       polyline.AddPoint(projector_.ProjectPoint(db_.GetStopsData().at(stop_name).position));
     }
     doc_.Add(move(polyline));
   }
 }
 
-void MapBuilder::DrawStops() {
+void TransportMap::DrawStops() {
   for (const string &stop_name : stop_names_) {
     Svg::Circle stop_circle;
     stop_circle.SetCenter(projector_.ProjectPoint(db_.GetStopsData().at(stop_name).position));
@@ -122,7 +122,7 @@ void MapBuilder::DrawStops() {
   }
 }
 
-void MapBuilder::DrawStopLabels() {
+void TransportMap::DrawStopLabels() {
   for (const string &stop_name : stop_names_) {
     Svg::Text substrate;
     substrate.SetPoint(projector_.ProjectPoint(db_.GetStopsData().at(stop_name).position));
@@ -143,10 +143,10 @@ void MapBuilder::DrawStopLabels() {
   }
 }
 
-void MapBuilder::DrawRouteLabels() {
+void TransportMap::DrawBusLabels() {
   size_t color_id = 0;
-  for (const string &route_name : route_names_) {
-    const TransportData::Bus &route = db_.GetRoutesData().at(route_name);
+  for (const string &route_name : bus_names_) {
+    const TransportData::Bus &route = db_.GetBusesData().at(route_name);
 
     Svg::Text first_stop_substrate;
     const string &first_stop_name = route.stops.front();

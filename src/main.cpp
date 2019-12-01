@@ -2,7 +2,7 @@
 #include "transport_data.h"
 #include "transport_informer.h"
 #include "transport_database.h"
-#include "map_builder.h"
+#include "transport_map.h"
 
 #include <iostream>
 
@@ -18,7 +18,7 @@ int main() {
   Database db(TransportData::ReadData(database_input), routing_settings);
 
   const Json::Dict &render_settings = input.at("render_settings").AsMap();
-  Informer informer(make_shared<Visualisation::MapBuilder>(db, render_settings));
+  Informer informer(make_shared<Visualisation::TransportMap>(db, render_settings));
   const Json::Array &info_requests = input.at("stat_requests").AsArray();
   cout << informer.ProcessRequests(db, info_requests) << endl;
 

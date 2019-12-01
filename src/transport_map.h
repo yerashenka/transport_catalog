@@ -44,24 +44,24 @@ Svg::Color ParseColor(const Json::Node &color_node);
 RenderSettings ParseRenderSettings(const Json::Dict &render_settings);
 std::string EscapeSpecialCharacters(const std::string &input);
 
-class MapBuilder {
+class TransportMap {
  public:
-  explicit MapBuilder(const TransportDatabase::Database &db, const Json::Dict &render_settings);
+  explicit TransportMap(const TransportDatabase::Database &db, const Json::Dict &render_settings);
   [[nodiscard]] std::string GetMap() const { return map_; }
 
  private:
   RenderSettings settings_;
   MapProjector projector_;
   const TransportDatabase::Database &db_;
-  std::set<std::string> route_names_;
+  std::set<std::string> bus_names_;
   std::set<std::string> stop_names_;
 
   Svg::Document doc_{};
   std::string map_{};
 
   void DrawLayers();
-  void DrawRoutes();
-  void DrawRouteLabels();
+  void DrawBuses();
+  void DrawBusLabels();
   void DrawStops();
   void DrawStopLabels();
 };

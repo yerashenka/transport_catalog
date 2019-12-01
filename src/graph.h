@@ -69,6 +69,6 @@ namespace Graph {
   typename DirectedWeightedGraph<Weight>::IncidentEdgesRange
   DirectedWeightedGraph<Weight>::GetIncidentEdges(VertexId vertex) const {
     const auto& edges = incidence_lists_[vertex];
-    return {std::begin(edges), std::end(edges)};
+    return {edges.begin(), edges.end()};
   }
 }
