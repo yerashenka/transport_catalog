@@ -17,6 +17,7 @@ struct RenderSettings {
   double width;
   double height;
   double padding;
+  std::vector<std::string> layers;
 
   double stop_radius;
   double line_width;
@@ -51,15 +52,17 @@ class MapBuilder {
  private:
   RenderSettings settings_;
   MapProjector projector_;
+  const TransportDatabase::Database &db_;
+  std::set<std::string> route_names_;
+  std::set<std::string> stop_names_;
+
+  Svg::Document doc_{};
   std::string map_{};
 
-  void DrawRoutes(Svg::Document &doc, const TransportDatabase::Database &db,
-                  const std::set<std::string> &route_names);
-  void DrawRouteLabels(Svg::Document &doc, const TransportDatabase::Database &db,
-                       const std::set<std::string> &route_names);
-  void DrawStops(Svg::Document &doc, const TransportDatabase::Database &db,
-                 const std::set<std::string> &stop_names);
-  void DrawStopLabels(Svg::Document &doc, const TransportDatabase::Database &db,
-                      const std::set<std::string> &stop_names);
+  void DrawLayers();
+  void DrawRoutes();
+  void DrawRouteLabels();
+  void DrawStops();
+  void DrawStopLabels();
 };
 }
