@@ -24,7 +24,7 @@ namespace Requests {
   }
 
   Json::Dict Bus::Process(const TransportDatabase &db) const {
-    const auto bus = db.GetRouteInfo(name);
+    const auto bus = db.GetBusInfo(name);
     Json::Dict response;
     if (!bus) {
       response["error_message"] = Json::Node("not found"s);

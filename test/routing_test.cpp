@@ -12,7 +12,7 @@
 
 using namespace std;
 
-std::vector<Json::Node> ProcessRoutingExample(const Json::Document &doc) {
+vector<Json::Node> ProcessRoutingExample(const Json::Document &doc) {
   const map<string, Json::Node> input = doc.GetRoot().AsMap();
   const vector<Json::Node> &database_input = input.at("base_requests").AsArray();
   const map<string, Json::Node> &settings = input.at("routing_settings").AsMap();
@@ -22,7 +22,6 @@ std::vector<Json::Node> ProcessRoutingExample(const Json::Document &doc) {
   const vector<Json::Node> &info_requests = input.at("stat_requests").AsArray();
   return informer.ProcessRequests(db, info_requests);
 }
-
 
 TEST_CASE("RoutingExample1") {
   ifstream input_stream("routing_queries/example1-input.json");
