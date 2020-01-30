@@ -51,7 +51,7 @@ class TransportMap {
 
  private:
   RenderSettings settings_;
-  MapProjector projector_;
+  std::unique_ptr<Projector> projector_;
   const TransportDatabase::Database &db_;
   std::set<std::string> bus_names_;
   std::set<std::string> stop_names_;

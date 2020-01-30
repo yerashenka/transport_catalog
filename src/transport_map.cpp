@@ -74,7 +74,7 @@ string EscapeSpecialCharacters(const string &input) {
 
 TransportMap::TransportMap(const TransportDatabase::Database &db, const Json::Dict &render_settings)
   : settings_(ParseRenderSettings(render_settings)),
-    projector_(db.GetStopsData(), settings_.width, settings_.height, settings_.padding),
+    projector_(make_unique<UniformProjector>(db, settings_.width, settings_.height, settings_.padding)),
     db_(db), bus_names_(SortNames(db.GetBusesData())), stop_names_(SortNames(db.GetStopsData())) {
   DrawLayers();
   ostringstream stream;
@@ -106,7 +106,7 @@ void TransportMap::DrawBuses() {
     polyline.SetStrokeWidth(settings_.line_width);
     polyline.SetStrokeLineCap("round").SetStrokeLineJoin("round");
     for (const string &stop_name : db_.GetBusesData().at(route_name).stops) {
-      polyline.AddPoint(projector_.ProjectPoint(db_.GetStopsData().at(stop_name).position));
+      polyline.AddPoint(projector_->ProjectStop(stop_name));
     }
     doc_.Add(move(polyline));
   }
@@ -115,7 +115,7 @@ void TransportMap::DrawBuses() {
 void TransportMap::DrawStops() {
   for (const string &stop_name : stop_names_) {
     Svg::Circle stop_circle;
-    stop_circle.SetCenter(projector_.ProjectPoint(db_.GetStopsData().at(stop_name).position));
+    stop_circle.SetCenter(projector_->ProjectStop(stop_name));
     stop_circle.SetRadius(settings_.stop_radius);
     stop_circle.SetFillColor("white");
     doc_.Add(move(stop_circle));
@@ -125,7 +125,7 @@ void TransportMap::DrawStops() {
 void TransportMap::DrawStopLabels() {
   for (const string &stop_name : stop_names_) {
     Svg::Text substrate;
-    substrate.SetPoint(projector_.ProjectPoint(db_.GetStopsData().at(stop_name).position));
+    substrate.SetPoint(projector_->ProjectStop(stop_name));
     substrate.SetOffset(settings_.stop_label_offset);
     substrate.SetFontSize(settings_.stop_label_font_size);
     substrate.SetFontFamily("Verdana");
@@ -150,7 +150,7 @@ void TransportMap::DrawBusLabels() {
 
     Svg::Text first_stop_substrate;
     const string &first_stop_name = route.stops.front();
-    first_stop_substrate.SetPoint(projector_.ProjectPoint(db_.GetStopsData().at(first_stop_name).position));
+    first_stop_substrate.SetPoint(projector_->ProjectStop(first_stop_name));
     first_stop_substrate.SetOffset(settings_.bus_label_offset);
     first_stop_substrate.SetFontSize(settings_.bus_label_font_size);
     first_stop_substrate.SetFontFamily("Verdana");
@@ -172,9 +172,9 @@ void TransportMap::DrawBusLabels() {
       continue;
 
     Svg::Text last_stop_substrate = first_stop_substrate;
-    last_stop_substrate.SetPoint(projector_.ProjectPoint(db_.GetStopsData().at(last_stop_name).position));
+    last_stop_substrate.SetPoint(projector_->ProjectStop(last_stop_name));
     Svg::Text last_stop_text = first_stop_text;
-    last_stop_text.SetPoint(projector_.ProjectPoint(db_.GetStopsData().at(last_stop_name).position));
+    last_stop_text.SetPoint(projector_->ProjectStop(last_stop_name));
     doc_.Add(move(last_stop_substrate));
     doc_.Add(move(last_stop_text));
   }

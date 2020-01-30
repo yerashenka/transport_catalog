@@ -26,4 +26,8 @@ namespace Location {
       + cos(lhs.latitude) * cos(rhs.latitude) * cos(abs(lhs.longitude - rhs.longitude))
     ) * EARTH_RADIUS;
   }
+
+  bool operator<(const Point &lhs, const Point &rhs) {
+    return pow(lhs.latitude, 2) + pow(lhs.longitude, 2) < pow(rhs.latitude, 2) + pow(rhs.longitude, 2);
+  }
 }

@@ -25,8 +25,10 @@ Database::Database(vector<TransportData::DataQuery> data, const Json::Dict &rout
         ComputeGeoRouteDistance(bus.stops, stops_data_)
     };
 
+    // Adding bus info to stops
     for (const string &stop_name : bus.stops) {
       stop_responses_.at(stop_name).bus_names.insert(bus.name);
+      stops_data_.at(stop_name).bus_names.insert(bus.name);
     }
 
     buses_data_.emplace(bus.name, move(bus));

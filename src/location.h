@@ -13,4 +13,6 @@ namespace Location {
   };
 
   double Distance(Point lhs, Point rhs);
+
+  bool operator<(const Point &lhs, const Point &rhs);
 }

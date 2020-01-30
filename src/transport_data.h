@@ -3,6 +3,7 @@
 #include "json.h"
 #include "location.h"
 
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <variant>
@@ -13,6 +14,7 @@ namespace TransportData {
     std::string name;
     Location::Point position;
     std::unordered_map<std::string, int> distances;
+    std::set<std::string> bus_names;
 
     static Stop ParseStop(const Json::Dict &info);
   };
@@ -30,8 +32,8 @@ namespace TransportData {
   };
 
   using DataQuery = std::variant<Stop, Bus>;
-  using StopsDict = std::unordered_map<std::string, const TransportData::Stop>;
-  using BusesDict = std::unordered_map<std::string, const TransportData::Bus>;
+  using StopsDict = std::unordered_map<std::string, TransportData::Stop>;
+  using BusesDict = std::unordered_map<std::string, TransportData::Bus>;
 
   std::vector<DataQuery> ReadData(const std::vector<Json::Node> &nodes);
 }

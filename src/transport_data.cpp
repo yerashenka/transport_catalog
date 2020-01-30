@@ -70,5 +70,4 @@ namespace TransportData {
 
     return result;
   }
-
 }
