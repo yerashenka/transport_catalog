@@ -56,12 +56,16 @@ class UniformProjector : public Projector {
   std::map<std::string, size_t> x_stop_indexing_;
   std::map<std::string, size_t> y_stop_indexing_;
   std::map<std::string, Svg::Point> stop_projection_;
+  std::unordered_set<std::string> reference_stops_;
 
+  std::vector<StopPosition> ComputeUniformStopPositions(const TransportDatabase::Database &db);
   std::pair<size_t, size_t> CoordinatesIndexing(std::vector<StopPosition> &stop_positions);
-  void CoordinatesCompression(size_t  x_count, size_t  y_count);
+  std::map<std::string, Svg::Point> CoordinatesCompression(size_t  x_count, size_t  y_count) const ;
 
-  std::pair<std::map<std::string, size_t>, size_t> IndexAxis(const std::vector<StopPosition> &stop_positions);
-  bool CheckAdjacency(const std::string &current_stop, const std::set<std::string> &other_stops);
+  void FindReferenceStops(const TransportDatabase::Database &db);
+  std::pair<std::map<std::string, size_t>, size_t> IndexAxis(const std::vector<StopPosition> &stop_positions,
+                                                             const std::string &axis) const;
+  bool CheckAdjacency(const std::string &current_stop, const std::set<std::string> &other_stops) const;
 };
 
 

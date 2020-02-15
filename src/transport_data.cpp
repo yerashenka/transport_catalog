@@ -29,6 +29,8 @@ namespace TransportData {
     if (is_roundtrip || stops.size() <= 1) {
       return stops;
     }
+
+    // adding stops for reverse path
     stops.reserve(stops.size() * 2 - 1);
     for (size_t stop_idx = stops.size() - 1; stop_idx > 0; --stop_idx) {
       stops.emplace_back(stops[stop_idx - 1]);

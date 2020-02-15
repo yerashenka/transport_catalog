@@ -41,18 +41,64 @@ UniformProjector::UniformProjector(const TransportDatabase::Database &db,
                                    double width, double height, double padding)
                                    : db_(db), height_(height), width_(width),
                                      padding_(padding) {
-  vector<StopPosition> stop_positions;
-  for (const auto &[stop_name, stop] : db_.GetStopsData()) {
-    stop_positions.emplace_back(StopPosition{stop_name, stop.position});
-  }
+  vector<StopPosition> stop_positions = ComputeUniformStopPositions(db);
 
   auto [x_count, y_count] = CoordinatesIndexing(stop_positions);
-  CoordinatesCompression(x_count, y_count);
+  stop_projection_ = CoordinatesCompression(x_count, y_count);
 }
 
-void UniformProjector::CoordinatesCompression(size_t  x_count, size_t  y_count) {
+vector<UniformProjector::StopPosition> UniformProjector::ComputeUniformStopPositions(const TransportDatabase::Database &db) {
+  FindReferenceStops(db);
+  const TransportData::StopsDict &all_stops = db.GetStopsData();
+  const TransportData::BusesDict &all_buses = db.GetBusesData();
+
+  unordered_map<string, Location::Point> locations;
+  locations.reserve(all_stops.size());
+  for (const auto &[_, bus] : all_buses) {
+    const vector<string> &stops = bus.stops;
+    if (stops.empty())
+      continue;
+    size_t i = 0;
+    size_t j = 0;
+    locations[bus.stops[j]] = all_stops.at(bus.stops[j]).position;
+    size_t last_stop_idx = bus.is_roundtrip ? stops.size() - 1 : stops.size() / 2;
+    while (i < last_stop_idx) {
+      j = i + 1;
+      while (count(reference_stops_.begin(), reference_stops_.end(), stops[j]) == 0)
+        ++j;
+      const Location::Point &i_pos = all_stops.at(stops[i]).position;
+      const Location::Point &j_pos = all_stops.at(stops[j]).position;
+      double step_lon = (j_pos.longitude - i_pos.longitude) / static_cast<double>(j - i);
+      double step_lat = (j_pos.latitude - i_pos.latitude) / static_cast<double>(j - i);
+      for (size_t k = i + 1; k < j; ++k) {
+        Location::Point k_pos{i_pos.latitude + step_lat * static_cast<double>(k - i),
+                              i_pos.longitude + step_lon * static_cast<double>(k - i)};
+        locations[bus.stops[k]] = k_pos;
+      }
+
+      locations[bus.stops[j]] = all_stops.at(bus.stops[j]).position;
+      i = j;
+    }
+  }
+
+  vector<UniformProjector::StopPosition> result;
+  result.reserve(all_stops.size());
+  for (const auto &[stop_name, location] : locations) {
+    result.emplace_back(StopPosition{stop_name, location});
+  }
+
+  // adding stops with no buses
+  for (const auto &[stop_name, stop] : all_stops) {
+    if (stop.bus_names.empty())
+      result.emplace_back(StopPosition{stop_name, stop.position});
+  }
+  return result;
+}
+
+std::map<std::string, Svg::Point> UniformProjector::CoordinatesCompression(size_t x_count, size_t y_count) const {
+  std::map<std::string, Svg::Point> stop_projection;
   double x_step = x_count > 1
-                  ? (width_ - 2 * padding_) / (static_cast<double >(x_count) - 1) : 0;
+                  ? (width_ - 2 * padding_) / (static_cast<double>(x_count) - 1) : 0;
   double y_step = y_count > 1
                   ? (height_ - 2 * padding_) / (static_cast<double>(y_count) - 1) : 0;
   for (const auto &[stop_name, _] : db_.GetStopsData()) {
@@ -60,47 +106,79 @@ void UniformProjector::CoordinatesCompression(size_t  x_count, size_t  y_count) 
     double x_projection = x_idx * x_step + padding_;
     size_t y_idx = y_stop_indexing_.at(stop_name);
     double y_projection = height_ - (y_idx * y_step + padding_);
-    stop_projection_[stop_name] = {x_projection, y_projection};
+    stop_projection[stop_name] = {x_projection, y_projection};
   }
+  return stop_projection;
 }
 
 std::pair<size_t, size_t> UniformProjector::CoordinatesIndexing(std::vector<StopPosition> &stop_positions) {
   sort(stop_positions.begin(), stop_positions.end(), [](const auto &lhs, const auto &rhs) {
     return lhs.position.longitude < rhs.position.longitude;
   });
-  auto [x_stop_indexing, x_count] = IndexAxis(stop_positions);
+  auto [x_stop_indexing, x_count] = IndexAxis(stop_positions, "longitude");
   x_stop_indexing_ = move(x_stop_indexing);
 
   sort(stop_positions.begin(), stop_positions.end(), [](const auto &lhs, const auto &rhs) {
     return lhs.position.latitude < rhs.position.latitude;
   });
-  auto [y_stop_indexing, y_count]= IndexAxis(stop_positions);
+  auto [y_stop_indexing, y_count]= IndexAxis(stop_positions, "latitude");
   y_stop_indexing_ = move(y_stop_indexing);
 
   return {x_count, y_count};
 }
 
-pair<std::map<std::string, size_t>, size_t> UniformProjector::IndexAxis(const std::vector<StopPosition> &stop_positions) {
+
+void UniformProjector::FindReferenceStops(const TransportDatabase::Database &db) {
+  // adding stops with more than one bus
+  for (const auto &[stop_name, stop] : db.GetStopsData()) {
+    if (stop.bus_names.empty() || stop.bus_names.size() > 1)
+      reference_stops_.insert(stop_name);
+  }
+
+  for (const auto &[_, bus] : db.GetBusesData()) {
+    if (bus.stops.empty())
+      continue;
+    // adding first and last stop
+    reference_stops_.insert(bus.stops.front());
+    if (!bus.is_roundtrip)
+      reference_stops_.insert(bus.stops[bus.stops.size() / 2]);
+
+
+    for (const string &stop : bus.stops) {
+      // adding repeated stops for non roundtrip
+      if (count(bus.stops.begin(), bus.stops.end(), stop) > 2)
+        reference_stops_.insert(stop);
+    }
+  }
+}
+
+pair<std::map<std::string, size_t>, size_t> UniformProjector::IndexAxis(const std::vector<StopPosition> &stop_positions,
+                                                                        const std::string &axis) const {
   std::map<std::string, size_t> result;
+  if (stop_positions.empty())
+    return {result, 0};
   size_t idx = 0;
   result[stop_positions[0].stop_name] = idx;
   set<string> glued_stops{stop_positions[0].stop_name};
+  StopPosition previous_stop_pos = stop_positions[0];
   for (size_t i = 1; i < stop_positions.size(); ++i) {
     const string stop = stop_positions[i].stop_name;
-    if (CheckAdjacency(stop, glued_stops)) {
+    if (!Location::AreSharingCoordinate(stop_positions[i].position, previous_stop_pos.position, axis) &&
+        CheckAdjacency(stop, glued_stops)) {
       ++idx;
       glued_stops.clear();
     }
     result[stop] = idx;
     glued_stops.insert(stop);
+    previous_stop_pos = stop_positions[i];
   }
   return {move(result), idx + 1};
 }
 
-bool UniformProjector::CheckAdjacency(const std::string &current_stop, const std::set<std::string> &other_stops) {
+bool UniformProjector::CheckAdjacency(const std::string &current_stop, const std::set<std::string> &other_stops) const {
   for (const string &bus_name : db_.GetStopsData().at(current_stop).bus_names) {
     const TransportData::Bus &bus = db_.GetBusesData().at(bus_name);
-    for (int i = 0; i < bus.stops.size(); ++i) {
+    for (size_t i = 0; i < bus.stops.size(); ++i) {
       if (bus.stops[i] == current_stop) {
         if (i != 0) {
           string previous_stop = bus.stops[i - 1];
@@ -116,8 +194,6 @@ bool UniformProjector::CheckAdjacency(const std::string &current_stop, const std
       }
     }
   }
-
   return false;
 }
-
 }

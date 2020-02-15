@@ -1,4 +1,4 @@
-#include "transport_map.h"
+#include "map_builder.h"
 #include "cctype"
 #include <set>
 #include <sstream>
@@ -65,14 +65,14 @@ string EscapeSpecialCharacters(const string &input) {
   string output;
   for (const char c : input) {
     if (c == '"' || c == '\\') {
-      output.push_back('\\');
+      //output.push_back('\\');
     }
     output.push_back(c);
   }
   return output;
 }
 
-TransportMap::TransportMap(const TransportDatabase::Database &db, const Json::Dict &render_settings)
+MapBuilder::MapBuilder(const TransportDatabase::Database &db, const Json::Dict &render_settings)
   : settings_(ParseRenderSettings(render_settings)),
     projector_(make_unique<UniformProjector>(db, settings_.width, settings_.height, settings_.padding)),
     db_(db), bus_names_(SortNames(db.GetBusesData())), stop_names_(SortNames(db.GetStopsData())) {
@@ -82,7 +82,7 @@ TransportMap::TransportMap(const TransportDatabase::Database &db, const Json::Di
   map_ = EscapeSpecialCharacters(stream.str());
 }
 
-void TransportMap::DrawLayers() {
+void MapBuilder::DrawLayers() {
   for (const string &layer : settings_.layers) {
     if (layer == "bus_lines") {
       DrawBuses();
@@ -98,21 +98,21 @@ void TransportMap::DrawLayers() {
   }
 }
 
-void TransportMap::DrawBuses() {
+void MapBuilder::DrawBuses() {
   size_t color_id = 0;
-  for (const string &route_name : bus_names_) {
+  for (const string &bus_name : bus_names_) {
     Svg::Polyline polyline;
     polyline.SetStrokeColor(settings_.color_palette[color_id++ % settings_.color_palette.size()]);
     polyline.SetStrokeWidth(settings_.line_width);
     polyline.SetStrokeLineCap("round").SetStrokeLineJoin("round");
-    for (const string &stop_name : db_.GetBusesData().at(route_name).stops) {
+    for (const string &stop_name : db_.GetBusesData().at(bus_name).stops) {
       polyline.AddPoint(projector_->ProjectStop(stop_name));
     }
     doc_.Add(move(polyline));
   }
 }
 
-void TransportMap::DrawStops() {
+void MapBuilder::DrawStops() {
   for (const string &stop_name : stop_names_) {
     Svg::Circle stop_circle;
     stop_circle.SetCenter(projector_->ProjectStop(stop_name));
@@ -122,7 +122,7 @@ void TransportMap::DrawStops() {
   }
 }
 
-void TransportMap::DrawStopLabels() {
+void MapBuilder::DrawStopLabels() {
   for (const string &stop_name : stop_names_) {
     Svg::Text substrate;
     substrate.SetPoint(projector_->ProjectStop(stop_name));
@@ -143,19 +143,21 @@ void TransportMap::DrawStopLabels() {
   }
 }
 
-void TransportMap::DrawBusLabels() {
+void MapBuilder::DrawBusLabels() {
   size_t color_id = 0;
-  for (const string &route_name : bus_names_) {
-    const TransportData::Bus &route = db_.GetBusesData().at(route_name);
+  for (const string &bus_name : bus_names_) {
+    const TransportData::Bus &bus = db_.GetBusesData().at(bus_name);
+    if (bus.stops.empty())
+      continue;
 
     Svg::Text first_stop_substrate;
-    const string &first_stop_name = route.stops.front();
+    const string &first_stop_name = bus.stops.front();
     first_stop_substrate.SetPoint(projector_->ProjectStop(first_stop_name));
     first_stop_substrate.SetOffset(settings_.bus_label_offset);
     first_stop_substrate.SetFontSize(settings_.bus_label_font_size);
     first_stop_substrate.SetFontFamily("Verdana");
     first_stop_substrate.SetFontWeight("bold");
-    first_stop_substrate.SetData(route_name);
+    first_stop_substrate.SetData(bus_name);
     Svg::Text first_stop_text = first_stop_substrate;
 
     first_stop_substrate.SetFillColor(settings_.underlayer_color);
@@ -167,8 +169,8 @@ void TransportMap::DrawBusLabels() {
     doc_.Add(first_stop_substrate);
     doc_.Add(first_stop_text);
 
-    const string &last_stop_name = route.stops[route.stops.size() / 2];
-    if (route.is_roundtrip || last_stop_name == first_stop_name)
+    const string &last_stop_name = bus.stops[bus.stops.size() / 2];
+    if (bus.is_roundtrip || last_stop_name == first_stop_name)
       continue;
 
     Svg::Text last_stop_substrate = first_stop_substrate;
