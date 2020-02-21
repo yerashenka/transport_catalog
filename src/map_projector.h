@@ -32,7 +32,7 @@ class GeoProjector : public Projector {
 };
 
 class UniformProjector : public Projector {
- private:
+private:
   struct StopPosition {
     std::string stop_name;
     Location::Point position;
@@ -53,18 +53,19 @@ class UniformProjector : public Projector {
   const double width_;
   const double padding_;
 
-  std::map<std::string, size_t> x_stop_indexing_;
-  std::map<std::string, size_t> y_stop_indexing_;
+  std::map<Location::Point, size_t> x_stop_indexing_;
+  std::map<Location::Point, size_t> y_stop_indexing_;
   std::map<std::string, Svg::Point> stop_projection_;
   std::unordered_set<std::string> reference_stops_;
 
   std::vector<StopPosition> ComputeUniformStopPositions(const TransportDatabase::Database &db);
   std::pair<size_t, size_t> CoordinatesIndexing(std::vector<StopPosition> &stop_positions);
-  std::map<std::string, Svg::Point> CoordinatesCompression(size_t  x_count, size_t  y_count) const ;
+
+  std::map<std::string, Svg::Point>
+  CoordinatesCompression(const std::vector<StopPosition> &stop_positions, size_t x_count, size_t y_count) const ;
 
   void FindReferenceStops(const TransportDatabase::Database &db);
-  std::pair<std::map<std::string, size_t>, size_t> IndexAxis(const std::vector<StopPosition> &stop_positions,
-                                                             const std::string &axis) const;
+  std::pair<std::map<Location::Point, size_t>, size_t> IndexAxis(const std::vector<StopPosition> &stop_positions) const;
   bool CheckAdjacency(const std::string &current_stop, const std::set<std::string> &other_stops) const;
 };
 
